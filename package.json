@@ -11,7 +11,8 @@
   "license": "ISC",
   "dependencies": {
     "aws-sdk": "^2.1009.0",
-    "deep-email-validator": "^0.1.18"
+    "deep-email-validator": "^0.1.18",
+    "hcaptcha": "^0.1.0"
   },
   "devDependencies": {
     "eslint": "^7.32.0",

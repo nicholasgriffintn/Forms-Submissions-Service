@@ -4,6 +4,7 @@ const AWS = require('aws-sdk');
 AWS.config.update({ region: process.env.AWS_REGION || 'eu-west-1' });
 const documentClient = new AWS.DynamoDB.DocumentClient();
 const { validate } = require('deep-email-validator');
+const { verify } = require('hcaptcha');
 
 const sanitize = (string) => {
   const map = {
@@ -76,78 +77,134 @@ exports.handler = async (event) => {
     if (formData) {
       const formSubmission = {};
 
-      if (formData.name) {
-        formSubmission.name = sanitize(formData.name);
-      } else {
+      if (formData.honey) {
+        // pretend that we have submitted the form
         return {
-          statusCode: 400,
-          body: `No name was provided`,
+          statusCode: 200,
+          body: {
+            status: 'Success',
+            message:
+              "Thanks for the submission! It has been recieved, I'll get back to you soon.",
+          },
           headers,
         };
-      }
-      if (formData.email) {
-        if (validateEmail(formData.email)) {
-          const emailVerification = await verifyEmail(formData.email);
+      } else {
+        if (!formData.captcha) {
+          return {
+            statusCode: 400,
+            body: {
+              status: 'error',
+              message: 'No captcha was provided.',
+            },
+            headers,
+          };
+        }
 
-          console.log(emailVerification);
+        const captchaVerification = await verify(
+          process.env.HCAPTCHA_SECRET,
+          formData.captcha
+        );
 
-          if (!emailVerification || emailVerification.valid !== true) {
+        console.log(captchaVerification);
+
+        if (!captchaVerification || captchaVerification.success !== true) {
+          return {
+            statusCode: 400,
+            body: {
+              status: 'error',
+              message: 'Captcha verification failed!',
+            },
+            headers,
+          };
+        }
+
+        if (formData.name) {
+          formSubmission.name = sanitize(formData.name);
+        } else {
+          return {
+            statusCode: 400,
+            body: {
+              status: 'error',
+              message: `No name was provided`,
+            },
+            headers,
+          };
+        }
+        if (formData.email) {
+          if (validateEmail(formData.email)) {
+            const emailVerification = await verifyEmail(formData.email);
+
+            console.log(emailVerification);
+
+            if (!emailVerification || emailVerification.valid !== true) {
+              return {
+                statusCode: 400,
+                body: JSON.stringify({
+                  status: 'error',
+                  message: `The email provided is invalid for the reason: ${emailVerification.reason}`,
+                  info: emailVerification,
+                }),
+                headers,
+              };
+            } else {
+              formSubmission.email = sanitize(formData.email);
+            }
+          } else {
             return {
               statusCode: 400,
-              body: JSON.stringify({
-                message: `The email provided is invalid for the reason: ${emailVerification.reason}`,
+              body: {
+                status: 'error',
+                message: `The email provided could not be validated.`,
                 info: emailVerification,
-              }),
+              },
               headers,
             };
-          } else {
-            formSubmission.email = sanitize(formData.email);
           }
         } else {
           return {
             statusCode: 400,
-            body: `The email provided could not be validated.`,
-            verification: emailVerification,
+            body: { status: 'error', message: `No email address was provided` },
             headers,
           };
         }
-      } else {
-        return {
-          statusCode: 400,
-          body: `No email address was provided`,
-          headers,
-        };
-      }
-      if (formData.subject) {
-        formSubmission.subject = sanitize(formData.subject);
-      } else {
-        return {
-          statusCode: 400,
-          body: `No subject was provided`,
-          headers,
-        };
-      }
-      if (!formData.message && !formData.upload) {
-        return {
-          statusCode: 400,
-          body: `No message or upload was provided`,
-          headers,
-        };
-      }
-      if (formData.message) {
-        formSubmission.message = sanitize(formData.message);
-      }
-      if (formData.upload) {
-        formSubmission.upload = sanitize(formData.upload);
-      }
+        if (formData.subject) {
+          formSubmission.subject = sanitize(formData.subject);
+        } else {
+          return {
+            statusCode: 400,
+            body: { status: 'error', message: `No subject was provided` },
+            headers,
+          };
+        }
+        if (!formData.message && !formData.upload) {
+          return {
+            statusCode: 400,
+            body: {
+              status: 'error',
+              message: `No message or upload was provided`,
+            },
+            headers,
+          };
+        }
+        if (formData.message) {
+          formSubmission.message = sanitize(formData.message);
+        }
+        if (formData.upload) {
+          formSubmission.upload = sanitize(formData.upload);
+        }
 
-      await Promise.all([saveFormData(formSubmission)]);
+        await Promise.all([saveFormData(formSubmission)]);
 
-      return {
-        statusCode: 200,
-        body: "Thanks for the submission! It has been recieved, I'll get back to you soon.",
-        headers,
-      };
+        return {
+          statusCode: 200,
+          body: {
+            status: 'Success',
+            message:
+              "Thanks for the submission! It has been recieved, I'll get back to you soon.",
+          },
+          headers,
+        };
+      }
     } else {
       throw new Error('No form data was submitted');
     }
@@ -156,7 +213,7 @@ exports.handler = async (event) => {
 
     return {
       statusCode: 500,
-      body: 'Error',
+      body: { status: 'Error' },
       headers,
     };
   }
