@@ -1,0 +1,28 @@
+{
+  "name": "forms-submissions-service",
+  "version": "1.0.0",
+  "description": "A service to handle forms submissions for my personal site.",
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "serverless offline",
+    "deploy": "serverless deploy"
+  },
+  "author": "Nicholas Griffin",
+  "license": "ISC",
+  "dependencies": {
+    "aws-sdk": "^2.1009.0",
+    "deep-email-validator": "^0.1.18"
+  },
+  "devDependencies": {
+    "eslint": "^7.32.0",
+    "eslint-config-airbnb-base": "^14.2.1",
+    "eslint-config-prettier": "^8.3.0",
+    "eslint-plugin-import": "^2.24.2",
+    "eslint-plugin-node": "^11.0.0",
+    "eslint-plugin-prettier": "^3.4.1",
+    "prettier": "^2.3.2",
+    "serverless": "^2.56.0",
+    "serverless-dotenv-plugin": "^3.9.0",
+    "serverless-offline": "^8.0.0"
+  }
+}

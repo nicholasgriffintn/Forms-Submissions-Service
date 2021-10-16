@@ -1,0 +1,41 @@
+service: serverless-forms-submissions-service
+
+plugins:
+  - serverless-offline
+
+provider:
+  name: aws
+  runtime: nodejs12.x
+  stage: prod
+  region: eu-west-1
+  stackName: serverless-forms-submissions-service-stack
+  apiName: serverless-forms-submissions-service-api
+  iamRoleStatements:
+    - Effect: 'Allow'
+      Action:
+        - 's3:*'
+      Resource: 'arn:aws:s3:::email.nicholasgriffin.dev/*'
+    - Effect: 'Allow'
+      Action:
+        - 'dynamodb:*'
+      Resource: 'arn:aws:dynamodb:eu-west-1:175054299308:table/Forms-Submissions-Service'
+
+package:
+  patterns:
+    - '!.eslintrc.js'
+    - '!package-lock.json'
+    - '!package.json'
+    - '!yarn.lock'
+
+functions:
+  process:
+    handler: processor.handler
+    description: Process forms submissions
+    timeout: 15
+    events:
+      - http:
+          path: submit
+          method: post
+          cors: true
+    environment:
+      TABLE_NAME: 'Forms-Submissions-Service'
