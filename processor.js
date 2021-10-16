@@ -78,133 +78,129 @@ exports.handler = async (event) => {
       const formSubmission = {};
 
       if (formData.honey) {
-        // pretend that we have submitted the form
         return {
           statusCode: 200,
           body: {
             status: 'Success',
-            message:
-              "Thanks for the submission! It has been recieved, I'll get back to you soon.",
-          },
-          headers,
-        };
-      } else {
-        if (!formData.captcha) {
-          return {
-            statusCode: 400,
-            body: {
-              status: 'error',
-              message: 'No captcha was provided.',
-            },
-            headers,
-          };
-        }
-
-        const captchaVerification = await verify(
-          process.env.HCAPTCHA_SECRET,
-          formData.captcha
-        );
-
-        console.log(captchaVerification);
-
-        if (!captchaVerification || captchaVerification.success !== true) {
-          return {
-            statusCode: 400,
-            body: {
-              status: 'error',
-              message: 'Captcha verification failed!',
-            },
-            headers,
-          };
-        }
-
-        if (formData.name) {
-          formSubmission.name = sanitize(formData.name);
-        } else {
-          return {
-            statusCode: 400,
-            body: {
-              status: 'error',
-              message: `No name was provided`,
-            },
-            headers,
-          };
-        }
-        if (formData.email) {
-          if (validateEmail(formData.email)) {
-            const emailVerification = await verifyEmail(formData.email);
-
-            console.log(emailVerification);
-
-            if (!emailVerification || emailVerification.valid !== true) {
-              return {
-                statusCode: 400,
-                body: JSON.stringify({
-                  status: 'error',
-                  message: `The email provided is invalid for the reason: ${emailVerification.reason}`,
-                  info: emailVerification,
-                }),
-                headers,
-              };
-            } else {
-              formSubmission.email = sanitize(formData.email);
-            }
-          } else {
-            return {
-              statusCode: 400,
-              body: {
-                status: 'error',
-                message: `The email provided could not be validated.`,
-                info: emailVerification,
-              },
-              headers,
-            };
-          }
-        } else {
-          return {
-            statusCode: 400,
-            body: { status: 'error', message: `No email address was provided` },
-            headers,
-          };
-        }
-        if (formData.subject) {
-          formSubmission.subject = sanitize(formData.subject);
-        } else {
-          return {
-            statusCode: 400,
-            body: { status: 'error', message: `No subject was provided` },
-            headers,
-          };
-        }
-        if (!formData.message && !formData.upload) {
-          return {
-            statusCode: 400,
-            body: {
-              status: 'error',
-              message: `No message or upload was provided`,
-            },
-            headers,
-          };
-        }
-        if (formData.message) {
-          formSubmission.message = sanitize(formData.message);
-        }
-        if (formData.upload) {
-          formSubmission.upload = sanitize(formData.upload);
-        }
-
-        await Promise.all([saveFormData(formSubmission)]);
-
-        return {
-          statusCode: 200,
-          body: {
-            status: 'Success',
-            message:
-              "Thanks for the submission! It has been recieved, I'll get back to you soon.",
+            message: 'Thanks for the submission! It has been recieved.',
           },
           headers,
         };
       }
+
+      if (!formData.captcha) {
+        return {
+          statusCode: 400,
+          body: {
+            status: 'error',
+            message: 'No captcha was provided.',
+          },
+          headers,
+        };
+      }
+
+      const captchaVerification = await verify(
+        process.env.HCAPTCHA_SECRET,
+        formData.captcha
+      );
+
+      if (!captchaVerification || captchaVerification.success !== true) {
+        return {
+          statusCode: 400,
+          body: {
+            status: 'error',
+            message: 'Captcha verification failed!',
+          },
+          headers,
+        };
+      }
+
+      if (formData.name) {
+        formSubmission.name = sanitize(formData.name);
+      } else {
+        return {
+          statusCode: 400,
+          body: {
+            status: 'error',
+            message: `No name was provided`,
+          },
+          headers,
+        };
+      }
+      if (formData.email) {
+        if (validateEmail(formData.email)) {
+          const emailVerification = await verifyEmail(formData.email);
+
+          console.log(emailVerification);
+
+          if (!emailVerification || emailVerification.valid !== true) {
+            return {
+              statusCode: 400,
+              body: JSON.stringify({
+                status: 'error',
+                message: `The email provided is invalid for the reason: ${emailVerification.reason}`,
+                info: emailVerification,
+              }),
+              headers,
+            };
+          } else {
+            formSubmission.email = sanitize(formData.email);
+          }
+        } else {
+          return {
+            statusCode: 400,
+            body: {
+              status: 'error',
+              message: `The email provided could not be validated.`,
+              info: emailVerification,
+            },
+            headers,
+          };
+        }
+      } else {
+        return {
+          statusCode: 400,
+          body: { status: 'error', message: `No email address was provided` },
+          headers,
+        };
+      }
+      if (formData.subject) {
+        formSubmission.subject = sanitize(formData.subject);
+      } else {
+        return {
+          statusCode: 400,
+          body: { status: 'error', message: `No subject was provided` },
+          headers,
+        };
+      }
+      if (!formData.message && !formData.upload) {
+        return {
+          statusCode: 400,
+          body: {
+            status: 'error',
+            message: `No message or upload was provided`,
+          },
+          headers,
+        };
+      }
+      if (formData.message) {
+        formSubmission.message = sanitize(formData.message);
+      }
+      if (formData.upload) {
+        formSubmission.upload = sanitize(formData.upload);
+      }
+
+      await Promise.all([saveFormData(formSubmission)]);
+
+      return {
+        statusCode: 200,
+        body: {
+          status: 'Success',
+          message:
+            "Thanks for the submission! It has been recieved, I'll get back to you soon.",
+        },
+        headers,
+      };
     } else {
       throw new Error('No form data was submitted');
     }
