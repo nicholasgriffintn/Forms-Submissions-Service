@@ -38,6 +38,47 @@ const verifyEmail = async (email) => {
   return result;
 };
 
+const sendEmail = async function (formData) {
+  const getContent = (formData) => {
+    let retval = '';
+    for (var attribName in formData) {
+      retval += attribName + ': ' + formData[attribName] + '\n\n';
+    }
+    return retval;
+  };
+
+  return new Promise(async (resolve, reject) => {
+    const emailParams = {
+      Source: process.env.TO_EMAIL,
+      ReplyToAddresses: [process.env.TO_EMAIL],
+      Destination: {
+        ToAddresses: [process.env.TO_EMAIL],
+      },
+      Message: {
+        Body: {
+          Text: {
+            Charset: 'UTF-8',
+            Data: getContent(formData),
+          },
+        },
+        Subject: {
+          Charset: 'UTF-8',
+          Data: 'New Form Submission',
+        },
+      },
+    };
+
+    try {
+      const result = await SES.sendEmail(emailParams).promise();
+      console.log('sendEmail result: ', result);
+      resolve();
+    } catch (err) {
+      console.error('sendEmail error: ', err);
+      reject();
+    }
+  });
+};
+
 const saveFormData = async (formData) => {
   return new Promise((resolve, reject) => {
     const params = {
@@ -67,7 +108,6 @@ const headers = {
 
 // Main Lambda entry point
 exports.handler = async (event) => {
-  console.log(`Recieved event: ${event.body}`);
   const formData =
     event.body && typeof event.body === 'string'
       ? JSON.parse(event.body)
@@ -80,10 +120,10 @@ exports.handler = async (event) => {
       if (formData.honey) {
         return {
           statusCode: 200,
-          body: {
+          body: JSON.stringify({
             status: 'Success',
             message: 'Thanks for the submission! It has been recieved.',
-          },
+          }),
           headers,
         };
       }
@@ -91,10 +131,10 @@ exports.handler = async (event) => {
       if (!formData.captcha) {
         return {
           statusCode: 400,
-          body: {
+          body: JSON.stringify({
             status: 'error',
             message: 'No captcha was provided.',
-          },
+          }),
           headers,
         };
       }
@@ -104,13 +144,15 @@ exports.handler = async (event) => {
         formData.captcha
       );
 
+      console.log(captchaVerification);
+
       if (!captchaVerification || captchaVerification.success !== true) {
         return {
           statusCode: 400,
-          body: {
+          body: JSON.stringify({
             status: 'error',
             message: 'Captcha verification failed!',
-          },
+          }),
           headers,
         };
       }
@@ -118,20 +160,18 @@ exports.handler = async (event) => {
       if (formData.name) {
         formSubmission.name = sanitize(formData.name);
       } else {
-        return {
+        return JSON.stringify({
           statusCode: 400,
-          body: {
+          body: JSON.stringify({
             status: 'error',
             message: `No name was provided`,
-          },
+          }),
           headers,
-        };
+        });
       }
       if (formData.email) {
         if (validateEmail(formData.email)) {
           const emailVerification = await verifyEmail(formData.email);
-
-          console.log(emailVerification);
 
           if (!emailVerification || emailVerification.valid !== true) {
             return {
@@ -149,18 +189,21 @@ exports.handler = async (event) => {
         } else {
           return {
             statusCode: 400,
-            body: {
+            body: JSON.stringify({
               status: 'error',
               message: `The email provided could not be validated.`,
               info: emailVerification,
-            },
+            }),
             headers,
           };
         }
       } else {
         return {
           statusCode: 400,
-          body: { status: 'error', message: `No email address was provided` },
+          body: JSON.stringify({
+            status: 'error',
+            message: `No email address was provided`,
+          }),
           headers,
         };
       }
@@ -169,17 +212,20 @@ exports.handler = async (event) => {
       } else {
         return {
           statusCode: 400,
-          body: { status: 'error', message: `No subject was provided` },
+          body: JSON.stringify({
+            status: 'error',
+            message: `No subject was provided`,
+          }),
           headers,
         };
       }
       if (!formData.message && !formData.upload) {
         return {
           statusCode: 400,
-          body: {
+          body: JSON.stringify({
             status: 'error',
             message: `No message or upload was provided`,
-          },
+          }),
           headers,
         };
       }
@@ -190,26 +236,36 @@ exports.handler = async (event) => {
         formSubmission.upload = sanitize(formData.upload);
       }
 
-      await Promise.all([saveFormData(formSubmission)]);
+      await Promise.all([
+        saveFormData(formSubmission),
+        sendEmail(formSubmission),
+      ]);
 
       return {
         statusCode: 200,
-        body: {
+        body: JSON.stringify({
           status: 'Success',
           message:
             "Thanks for the submission! It has been recieved, I'll get back to you soon.",
-        },
+        }),
         headers,
       };
     } else {
-      throw new Error('No form data was submitted');
+      return {
+        statusCode: 500,
+        body: JSON.stringify({
+          status: 'Error',
+          message: 'No form data was submitted',
+        }),
+        headers,
+      };
     }
   } catch (err) {
     console.error('handler error: ', err);
 
     return {
       statusCode: 500,
-      body: { status: 'Error' },
+      body: JSON.stringify({ status: 'Error' }),
       headers,
     };
   }

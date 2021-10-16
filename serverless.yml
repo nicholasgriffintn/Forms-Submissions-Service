@@ -11,6 +11,10 @@ provider:
   stackName: serverless-forms-submissions-service-stack
   apiName: serverless-forms-submissions-service-api
   iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - ses:SendEmail
+        - ses:SendRawEmail
     - Effect: 'Allow'
       Action:
         - 's3:*'
