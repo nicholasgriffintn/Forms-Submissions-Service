@@ -91,11 +91,11 @@ exports.handler = async (event) => {
 
           console.log(emailVerification);
 
-          if (emailVerification?.valid !== true) {
+          if (!emailVerification || emailVerification.valid !== true) {
             return {
               statusCode: 400,
               body: JSON.stringify({
-                message: `The email provided is invalid for the reason: ${emailVerification?.reason}`,
+                message: `The email provided is invalid for the reason: ${emailVerification.reason}`,
                 info: emailVerification,
               }),
               headers,
