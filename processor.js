@@ -3,6 +3,8 @@
 const AWS = require('aws-sdk');
 AWS.config.update({ region: process.env.AWS_REGION || 'eu-west-1' });
 const documentClient = new AWS.DynamoDB.DocumentClient();
+const SES = new AWS.SES();
+
 const { validate } = require('deep-email-validator');
 const { verify } = require('hcaptcha');
 
@@ -49,8 +51,8 @@ const sendEmail = async function (formData) {
 
   return new Promise(async (resolve, reject) => {
     const emailParams = {
-      Source: process.env.TO_EMAIL,
-      ReplyToAddresses: [process.env.TO_EMAIL],
+      Source: process.env.FROM_EMAIL,
+      ReplyToAddresses: [process.env.FROM_EMAIL],
       Destination: {
         ToAddresses: [process.env.TO_EMAIL],
       },
@@ -68,13 +70,15 @@ const sendEmail = async function (formData) {
       },
     };
 
+    console.log(emailParams);
+
     try {
       const result = await SES.sendEmail(emailParams).promise();
       console.log('sendEmail result: ', result);
-      resolve();
+      resolve(result);
     } catch (err) {
       console.error('sendEmail error: ', err);
-      reject();
+      reject(err);
     }
   });
 };
@@ -89,7 +93,7 @@ const saveFormData = async (formData) => {
         created: Math.floor(Date.now() / 1000).toString(),
       },
     };
-    console.log(params);
+
     documentClient.put(params, function (err, data) {
       if (err) {
         console.error(err);
@@ -143,8 +147,6 @@ exports.handler = async (event) => {
         process.env.HCAPTCHA_SECRET,
         formData.captcha
       );
-
-      console.log(captchaVerification);
 
       if (!captchaVerification || captchaVerification.success !== true) {
         return {

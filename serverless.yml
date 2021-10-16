@@ -11,16 +11,10 @@ provider:
   stackName: serverless-forms-submissions-service-stack
   apiName: serverless-forms-submissions-service-api
   iamRoleStatements:
-    - Effect: Allow
+    - Effect: 'Allow'
       Action:
         - ses:SendEmail
         - ses:SendRawEmail
-    - Effect: 'Allow'
-      Action:
-        - 's3:*'
-      Resource: 'arn:aws:s3:::email.nicholasgriffin.dev/*'
-    - Effect: 'Allow'
-      Action:
         - 'dynamodb:*'
       Resource: 'arn:aws:dynamodb:eu-west-1:175054299308:table/Forms-Submissions-Service'
 
@@ -43,3 +37,5 @@ functions:
           cors: true
     environment:
       TABLE_NAME: 'Forms-Submissions-Service'
+      TO_EMAIL: 'inbox@nicholasgriffin.dev'
+      FROM_EMAIL: 'inbox@nicholasgriffin.dev'
